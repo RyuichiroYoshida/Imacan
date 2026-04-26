@@ -228,7 +228,7 @@ PWA（React / Next.js）
 
 ### 10.2 バックエンド
 
-Go + Gin
+Go + TypeSpec + Oapi-Codegen
 
 ### 10.3 認証
 
