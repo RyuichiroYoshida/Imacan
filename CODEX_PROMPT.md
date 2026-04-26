@@ -35,14 +35,24 @@ READMEの内容を正として、MVPを実装してください。
 ## 技術スタック
 
 - フロントエンド: React / Next.js
-- バックエンド: Go + TypeSpec + Oapi-Codegen
+- バックエンド: Go + TypeSpec + oapi-codegen
 - 認証: Discord OAuth2 + JWT
 - データストア: Redis
 - 配信形態: PWA
 
 ## バックエンド要件
 
-まずTypeSpecを利用し、API定義を行った後に、oapi-codegenを利用しGoのコードを生成し、APIサーバーを実装してください。
+TypeSpecをAPI契約の起点にしてください。
+TypeSpecからOpenAPIを生成し、そのOpenAPI定義をもとに `oapi-codegen` でGoの型・サーバーインターフェースを生成してAPIサーバーを実装してください。
+GoのHTTPルーティングは `oapi-codegen` が生成するインターフェースに合わせ、特定フレームワーク前提の手書き実装に寄せすぎないでください。
+
+### API定義・生成
+
+- TypeSpec定義は `backend/api/typespec/` に配置する
+- 生成されたOpenAPI定義は `backend/api/openapi/` に配置する
+- `oapi-codegen` の生成コードは `backend/internal/generated/` に配置する
+- APIのリクエスト・レスポンス型は原則として生成コードを利用する
+- 手書きの業務ロジックは `backend/internal/auth/`, `backend/internal/presence/`, `backend/internal/store/redis/` に分離する
 
 ### 認証
 
@@ -136,14 +146,17 @@ Next.jsでPWAとして使えるUIを実装してください。
 
 1. 既存のリポジトリ構成を確認してください。
 2. 必要なディレクトリ・ファイルを作成してください。
-3. バックエンド、フロントエンド、Redis連携をMVPとして動く形にしてください。
-4. ローカル開発用の環境変数サンプルを用意してください。
-5. READMEに起動方法、環境変数、API概要を追記してください。
-6. 可能な範囲でテストまたは動作確認コマンドを追加してください。
+3. TypeSpecでAPI契約を定義し、OpenAPIとGoコード生成の流れを作ってください。
+4. バックエンド、フロントエンド、Redis連携をMVPとして動く形にしてください。
+5. ローカル開発用の環境変数サンプルを用意してください。
+6. READMEに起動方法、環境変数、API概要、API生成手順を追記してください。
+7. 可能な範囲でテストまたは動作確認コマンドを追加してください。
 
 ## 受け入れ条件
 
 - Discordログイン後にJWTを取得できる
+- TypeSpecからOpenAPIを生成できる
+- OpenAPIから `oapi-codegen` でGoコードを生成できる
 - JWT付きでPresenceを更新できる
 - `CLASS`, `SELF_STUDY`, `OUT` の状態更新ができる
 - Redis TTLにより状態が自動失効する
