@@ -1,0 +1,268 @@
+openapi: 3.0.0
+info:
+  title: ProjectImacan API
+  description: 学校内の在席状態と活動ステータスを共有するProjectImacanのMVP APIです。
+  version: 0.0.0
+tags: []
+paths:
+  /auth/discord/callback:
+    post:
+      operationId: Auth_discordCallback
+      summary: Discordログインcallback
+      description: Discord OAuth2の認可コードを検証し、ProjectImacan APIで利用するJWTを発行します。
+      parameters: []
+      responses:
+        '200':
+          description: Discordログイン成功時のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponseBody'
+              examples:
+                JWTを発行する:
+                  summary: JWTを発行する
+                  value:
+                    accessToken: jwt.example
+                    tokenType: Bearer
+                    expiresIn: 3600
+        '400':
+          description: リクエスト内容が不正な場合のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+        '500':
+          description: サーバー内部で想定外のエラーが発生した場合のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscordCallbackRequest'
+            examples:
+              JWTを発行する:
+                summary: JWTを発行する
+                value:
+                  code: discord-oauth2-authorization-code
+  /presence:
+    post:
+      operationId: Presence_updatePresence
+      summary: Presence更新
+      description: ログイン中のユーザーの活動ステータスを更新します。OUTの場合はPresenceを即時削除します。
+      parameters: []
+      responses:
+        '200':
+          description: Presence更新成功時のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresenceUpdateResponseBody'
+              examples:
+                自習中に更新する:
+                  summary: 自習中に更新する
+                  value:
+                    activity: SELF_STUDY
+                    updatedAt: '2026-04-26T09:30:00Z'
+                    expiresAt: '2026-04-26T20:30:00Z'
+        '400':
+          description: リクエスト内容が不正な場合のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+        '401':
+          description: JWTが未指定、または無効な場合のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+        '500':
+          description: サーバー内部で想定外のエラーが発生した場合のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresenceUpdateRequest'
+            examples:
+              自習中に更新する:
+                summary: 自習中に更新する
+                value:
+                  activity: SELF_STUDY
+                  lat: 35.68
+                  lng: 139.76
+      security:
+        - BearerAuth: []
+  /presence/summary:
+    get:
+      operationId: Presence_getPresenceSummary
+      summary: Presence集計取得
+      description: 現在有効なPresenceを集計し、在席人数と活動別人数を返します。
+      parameters: []
+      responses:
+        '200':
+          description: Presence集計取得成功時のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresenceSummaryResponseBody'
+              examples:
+                現在の在席状況を取得する:
+                  summary: 現在の在席状況を取得する
+                  value:
+                    total: 5
+                    class: 3
+                    selfStudy: 2
+        '500':
+          description: サーバー内部で想定外のエラーが発生した場合のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+components:
+  schemas:
+    Activity:
+      type: string
+      enum:
+        - CLASS
+        - SELF_STUDY
+        - OUT
+      description: ユーザーが共有する現在の活動ステータスです。
+    AuthTokenResponseBody:
+      type: object
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+      properties:
+        accessToken:
+          type: string
+          description: ProjectImacan APIで利用するJWTです。
+        tokenType:
+          type: string
+          enum:
+            - Bearer
+          description: Authorizationヘッダーで利用するトークン種別です。
+        expiresIn:
+          type: integer
+          format: int32
+          description: アクセストークンの有効期間です。単位は秒です。
+      description: 認証成功時に返却するJWTアクセストークンです。
+      example:
+        accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example
+        tokenType: Bearer
+        expiresIn: 3600
+    DiscordCallbackRequest:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          description: Discord OAuth2から返却された認可コードです。
+        redirectUri:
+          type: string
+          description: フロントエンドで使用したリダイレクトURIです。環境ごとの差異を吸収するため任意にしています。
+      description: Discord OAuth2の認可コードをバックエンドへ渡すリクエストです。
+      example:
+        code: discord-oauth2-authorization-code
+        redirectUri: http://localhost:3000/auth/callback
+    ErrorResponseBody:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: 機械的に判定できるエラーコードです。
+        message:
+          type: string
+          description: ユーザーまたは開発者向けのエラーメッセージです。
+      description: APIエラーの共通レスポンス本文です。
+      example:
+        code: INVALID_REQUEST
+        message: activityにはCLASS、SELF_STUDY、OUTのいずれかを指定してください。
+    PresenceSummaryResponseBody:
+      type: object
+      required:
+        - total
+        - class
+        - selfStudy
+      properties:
+        total:
+          type: integer
+          format: int32
+          description: 現在在席している合計人数です。
+        class:
+          type: integer
+          format: int32
+          description: 授業中として共有している人数です。
+        selfStudy:
+          type: integer
+          format: int32
+          description: 自習中として共有している人数です。
+      description: 現在有効なPresenceの集計結果です。
+      example:
+        total: 5
+        class: 3
+        selfStudy: 2
+    PresenceUpdateRequest:
+      type: object
+      required:
+        - activity
+      properties:
+        activity:
+          allOf:
+            - $ref: '#/components/schemas/Activity'
+          description: 設定する活動ステータスです。
+        lat:
+          type: number
+          format: double
+          description: 任意の緯度です。在席判定にのみ利用し、正確な値は永続保存しません。
+        lng:
+          type: number
+          format: double
+          description: 任意の経度です。在席判定にのみ利用し、正確な値は永続保存しません。
+      description: ユーザーのPresenceを更新するリクエストです。正確な位置情報は保存しません。
+      example:
+        activity: OUT
+    PresenceUpdateResponseBody:
+      type: object
+      required:
+        - activity
+        - updatedAt
+      properties:
+        activity:
+          allOf:
+            - $ref: '#/components/schemas/Activity'
+          description: 更新後の活動ステータスです。
+        updatedAt:
+          type: string
+          format: date-time
+          description: Presenceを更新した日時です。
+        expiresAt:
+          type: string
+          format: date-time
+          description: Presenceが自動失効する日時です。OUTの場合は返却されないことがあります。
+      description: Presence更新後の状態です。
+      example:
+        activity: SELF_STUDY
+        updatedAt: '2026-04-26T09:30:00Z'
+        expiresAt: '2026-04-26T20:30:00Z'
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: Bearer
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+    variables: {}

@@ -1,0 +1,15 @@
+{
+  "name": "@project-imacan/api-contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsp compile .",
+    "format": "tsp format \"**/*.tsp\""
+  },
+  "devDependencies": {
+    "@typespec/compiler": "latest",
+    "@typespec/http": "latest",
+    "@typespec/openapi3": "latest",
+    "@typespec/rest": "latest"
+  }
+}
