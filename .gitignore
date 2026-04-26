@@ -27,6 +27,14 @@ go.work.sum
 # env file
 .env
 
+# Node / TypeSpec
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+tsp-output/
+
 # Editor/IDE
 # .idea/
 # .vscode/
