@@ -62,76 +62,50 @@ func (e AuthTokenResponseBodyTokenType) Valid() bool {
 	}
 }
 
-// Activity ユーザーが共有する現在の活動ステータスです。
+// Activity defines model for Activity.
 type Activity string
 
-// AuthTokenResponseBody 認証成功時に返却するJWTアクセストークンです。
+// AuthTokenResponseBody defines model for AuthTokenResponseBody.
 type AuthTokenResponseBody struct {
-	// AccessToken ProjectImacan APIで利用するJWTです。
-	AccessToken string `json:"accessToken"`
-
-	// ExpiresIn アクセストークンの有効期間です。単位は秒です。
-	ExpiresIn int32 `json:"expiresIn"`
-
-	// TokenType Authorizationヘッダーで利用するトークン種別です。
-	TokenType AuthTokenResponseBodyTokenType `json:"tokenType"`
+	AccessToken string                         `json:"accessToken"`
+	ExpiresIn   int32                          `json:"expiresIn"`
+	TokenType   AuthTokenResponseBodyTokenType `json:"tokenType"`
 }
 
-// AuthTokenResponseBodyTokenType Authorizationヘッダーで利用するトークン種別です。
+// AuthTokenResponseBodyTokenType defines model for AuthTokenResponseBody.TokenType.
 type AuthTokenResponseBodyTokenType string
 
-// DiscordCallbackRequest Discord OAuth2の認可コードをバックエンドへ渡すリクエストです。
+// DiscordCallbackRequest defines model for DiscordCallbackRequest.
 type DiscordCallbackRequest struct {
-	// Code Discord OAuth2から返却された認可コードです。
-	Code string `json:"code"`
-
-	// RedirectUri フロントエンドで使用したリダイレクトURIです。環境ごとの差異を吸収するため任意にしています。
+	Code        string  `json:"code"`
 	RedirectUri *string `json:"redirectUri,omitempty"`
 }
 
-// ErrorResponseBody APIエラーの共通レスポンス本文です。
+// ErrorResponseBody defines model for ErrorResponseBody.
 type ErrorResponseBody struct {
-	// Code 機械的に判定できるエラーコードです。
-	Code string `json:"code"`
-
-	// Message ユーザーまたは開発者向けのエラーメッセージです。
+	Code    string `json:"code"`
 	Message string `json:"message"`
 }
 
-// PresenceSummaryResponseBody 現在有効なPresenceの集計結果です。
+// PresenceSummaryResponseBody defines model for PresenceSummaryResponseBody.
 type PresenceSummaryResponseBody struct {
-	// Class 授業中として共有している人数です。
-	Class int32 `json:"class"`
-
-	// SelfStudy 自習中として共有している人数です。
+	Class     int32 `json:"class"`
 	SelfStudy int32 `json:"selfStudy"`
-
-	// Total 現在在席している合計人数です。
-	Total int32 `json:"total"`
+	Total     int32 `json:"total"`
 }
 
-// PresenceUpdateRequest ユーザーのPresenceを更新するリクエストです。正確な位置情報は保存しません。
+// PresenceUpdateRequest defines model for PresenceUpdateRequest.
 type PresenceUpdateRequest struct {
-	// Activity 設定する活動ステータスです。
 	Activity Activity `json:"activity"`
-
-	// Lat 任意の緯度です。在席判定にのみ利用し、正確な値は永続保存しません。
-	Lat *float64 `json:"lat,omitempty"`
-
-	// Lng 任意の経度です。在席判定にのみ利用し、正確な値は永続保存しません。
-	Lng *float64 `json:"lng,omitempty"`
+	Lat      *float64 `json:"lat,omitempty"`
+	Lng      *float64 `json:"lng,omitempty"`
 }
 
-// PresenceUpdateResponseBody Presence更新後の状態です。
+// PresenceUpdateResponseBody defines model for PresenceUpdateResponseBody.
 type PresenceUpdateResponseBody struct {
-	// Activity 更新後の活動ステータスです。
-	Activity Activity `json:"activity"`
-
-	// ExpiresAt Presenceが自動失効する日時です。OUTの場合は返却されないことがあります。
+	Activity  Activity   `json:"activity"`
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
-
-	// UpdatedAt Presenceを更新した日時です。
-	UpdatedAt time.Time `json:"updatedAt"`
+	UpdatedAt time.Time  `json:"updatedAt"`
 }
 
 // AuthDiscordCallbackJSONRequestBody defines body for AuthDiscordCallback for application/json ContentType.
@@ -142,13 +116,13 @@ type PresenceUpdatePresenceJSONRequestBody = PresenceUpdateRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Discordログインcallback
+
 	// (POST /auth/discord/callback)
 	AuthDiscordCallback(w http.ResponseWriter, r *http.Request)
-	// Presence更新
+
 	// (POST /presence)
 	PresenceUpdatePresence(w http.ResponseWriter, r *http.Request)
-	// Presence集計取得
+
 	// (GET /presence/summary)
 	PresenceGetPresenceSummary(w http.ResponseWriter, r *http.Request)
 }
@@ -443,13 +417,13 @@ func (response PresenceGetPresenceSummary500JSONResponse) VisitPresenceGetPresen
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Discordログインcallback
+
 	// (POST /auth/discord/callback)
 	AuthDiscordCallback(ctx context.Context, request AuthDiscordCallbackRequestObject) (AuthDiscordCallbackResponseObject, error)
-	// Presence更新
+
 	// (POST /presence)
 	PresenceUpdatePresence(ctx context.Context, request PresenceUpdatePresenceRequestObject) (PresenceUpdatePresenceResponseObject, error)
-	// Presence集計取得
+
 	// (GET /presence/summary)
 	PresenceGetPresenceSummary(ctx context.Context, request PresenceGetPresenceSummaryRequestObject) (PresenceGetPresenceSummaryResponseObject, error)
 }
@@ -572,41 +546,25 @@ func (sh *strictHandler) PresenceGetPresenceSummary(w http.ResponseWriter, r *ht
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
