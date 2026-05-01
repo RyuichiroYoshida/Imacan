@@ -50,7 +50,7 @@ func (h *Handler) PresenceUpdatePresence(ctx context.Context, request generated.
 		return generated.PresenceUpdatePresence400JSONResponse(errorBody("INVALID_REQUEST", "request body is required")), nil
 	}
 
-	record, hasExpiry, err := h.presence.Update(userID, request.Body.Activity, h.now())
+	record, hasExpiry, err := h.presence.Update(ctx, userID, request.Body.Activity, h.now())
 	if err != nil {
 		return generated.PresenceUpdatePresence400JSONResponse(errorBody("INVALID_ACTIVITY", "activity must be CLASS, SELF_STUDY, or OUT")), nil
 	}
@@ -67,7 +67,10 @@ func (h *Handler) PresenceUpdatePresence(ctx context.Context, request generated.
 }
 
 func (h *Handler) PresenceGetPresenceSummary(ctx context.Context, request generated.PresenceGetPresenceSummaryRequestObject) (generated.PresenceGetPresenceSummaryResponseObject, error) {
-	summary := h.presence.Summary(h.now())
+	summary, err := h.presence.Summary(ctx, h.now())
+	if err != nil {
+		return generated.PresenceGetPresenceSummary500JSONResponse(errorBody("SUMMARY_FAILED", "failed to load presence summary")), nil
+	}
 
 	return generated.PresenceGetPresenceSummary200JSONResponse{
 		Total:     summary.Total,

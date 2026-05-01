@@ -1,8 +1,8 @@
 package presence
 
 import (
+	"context"
 	"errors"
-	"sync"
 	"time"
 
 	"github.com/RyuichiroYoshida/imacan/backend/internal/generated"
@@ -24,32 +24,30 @@ type Summary struct {
 }
 
 type Service struct {
-	mu                sync.Mutex
-	records           map[string]Record
+	store             Store
 	classTTL          time.Duration
 	schoolCloseHour   int
 	schoolCloseMinute int
 }
 
-func NewService(classTTL time.Duration, schoolCloseHour, schoolCloseMinute int) *Service {
+func NewService(store Store, classTTL time.Duration, schoolCloseHour, schoolCloseMinute int) *Service {
 	return &Service{
-		records:           make(map[string]Record),
+		store:             store,
 		classTTL:          classTTL,
 		schoolCloseHour:   schoolCloseHour,
 		schoolCloseMinute: schoolCloseMinute,
 	}
 }
 
-func (s *Service) Update(userID string, activity generated.Activity, now time.Time) (Record, bool, error) {
+func (s *Service) Update(ctx context.Context, userID string, activity generated.Activity, now time.Time) (Record, bool, error) {
 	if !activity.Valid() {
 		return Record{}, false, ErrInvalidActivity
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if activity == generated.OUT {
-		delete(s.records, userID)
+		if err := s.store.Delete(ctx, userID); err != nil {
+			return Record{}, false, err
+		}
 		return Record{
 			UserID:    userID,
 			Activity:  activity,
@@ -64,19 +62,23 @@ func (s *Service) Update(userID string, activity generated.Activity, now time.Ti
 		UpdatedAt: now,
 		ExpiresAt: expiresAt,
 	}
-	s.records[userID] = record
+	if err := s.store.Save(ctx, record, expiresAt.Sub(now)); err != nil {
+		return Record{}, false, err
+	}
 
 	return record, true, nil
 }
 
-func (s *Service) Summary(now time.Time) Summary {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (s *Service) Summary(ctx context.Context, now time.Time) (Summary, error) {
+	records, err := s.store.List(ctx)
+	if err != nil {
+		return Summary{}, err
+	}
 
 	var summary Summary
-	for userID, record := range s.records {
+	for _, record := range records {
 		if !record.ExpiresAt.After(now) {
-			delete(s.records, userID)
+			_ = s.store.Delete(ctx, record.UserID)
 			continue
 		}
 
@@ -89,7 +91,7 @@ func (s *Service) Summary(now time.Time) Summary {
 		}
 	}
 
-	return summary
+	return summary, nil
 }
 
 func (s *Service) expiresAt(activity generated.Activity, now time.Time) time.Time {

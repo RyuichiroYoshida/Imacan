@@ -10,6 +10,9 @@ type Config struct {
 	APIAddr             string
 	JWTSecret           string
 	TokenTTL            time.Duration
+	RedisAddr           string
+	RedisPassword       string
+	RedisDB             int
 	SchoolCloseHour     int
 	SchoolCloseMinute   int
 	ClassTTL            time.Duration
@@ -26,6 +29,9 @@ func Load() Config {
 		APIAddr:             env("API_ADDR", ":8080"),
 		JWTSecret:           env("JWT_SECRET", "change-me"),
 		TokenTTL:            time.Hour,
+		RedisAddr:           env("REDIS_ADDR", "localhost:6379"),
+		RedisPassword:       os.Getenv("REDIS_PASSWORD"),
+		RedisDB:             envInt("REDIS_DB", 0),
 		SchoolCloseHour:     closeHour,
 		SchoolCloseMinute:   closeMinute,
 		ClassTTL:            105 * time.Minute,

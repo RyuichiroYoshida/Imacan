@@ -15,7 +15,7 @@ import (
 
 func TestAuthPresenceFlow(t *testing.T) {
 	authService := auth.NewService("test-secret", time.Hour)
-	presenceService := presence.NewService(105*time.Minute, 20, 30)
+	presenceService := presence.NewService(presence.NewMemoryStore(), 105*time.Minute, 20, 30)
 	handler := NewHandler(authService, presenceService)
 	router := NewRouter(handler, authService)
 
@@ -51,7 +51,7 @@ func TestAuthPresenceFlow(t *testing.T) {
 
 func TestPresenceRequiresBearerToken(t *testing.T) {
 	authService := auth.NewService("test-secret", time.Hour)
-	presenceService := presence.NewService(105*time.Minute, 20, 30)
+	presenceService := presence.NewService(presence.NewMemoryStore(), 105*time.Minute, 20, 30)
 	handler := NewHandler(authService, presenceService)
 	router := NewRouter(handler, authService)
 
