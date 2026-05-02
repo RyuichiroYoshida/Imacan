@@ -56,7 +56,8 @@ MVP 本番は `Railway` の単一プロジェクト構成にする。
 注意:
 
 - ブラウザで動く PWA は private network に直接アクセスできない。`NEXT_PUBLIC_API_BASE_URL` は公開 API URL にする。
-- Go API はホスティング基盤が指定するポートに bind する必要がある。必要なら `API_ADDR` を `:8080` 固定ではなく `PORT` から組み立てる修正を検討する。
+- Go API は Railway が注入する `PORT` を読む。`API_ADDR` が明示されている場合は `API_ADDR` を優先する。
+- Redis は `REDIS_URL` が設定されている場合、その URL を優先する。ローカル開発では従来通り `REDIS_ADDR`、`REDIS_PASSWORD`、`REDIS_DB` を使える。
 - Discord Developer Portal の redirect URI は本番 URL が確定してから HTTPS の URL を登録する。
 
 ### Railway サービス構成
@@ -70,6 +71,60 @@ Railway project には次のサービスを作る。
 | `redis` | Presence 保存 | 公開しない |
 
 `frontend` から `backend` へは Railway が発行する公開 HTTPS URL でアクセスする。`backend` から `redis` へは Railway project 内の private network で接続する。
+
+### Railway 設定ファイル
+
+Railway の Config as Code は 1 サービスごとの設定として扱う。複数サービスを同じリポジトリからデプロイするため、次のファイルを使い分ける。
+
+| サービス | Config as Code | Dockerfile |
+| --- | --- | --- |
+| `backend` | `deployments/railway/backend.railway.json` | `deployments/railway/backend.Dockerfile` |
+| `frontend` | `deployments/railway/frontend.railway.json` | `deployments/railway/frontend.Dockerfile` |
+
+Railway の service settings で、それぞれの config file path を絶対パスで指定する。
+
+```text
+/deployments/railway/backend.railway.json
+/deployments/railway/frontend.railway.json
+```
+
+`backend` は `/healthz`、`frontend` は `/` を healthcheck path にする。
+
+### Railway 手順
+
+1. Railway project を作成する。
+2. Redis service を追加する。
+3. GitHub repository から `backend` service を作成する。
+4. `backend` service の config file path に `/deployments/railway/backend.railway.json` を設定する。
+5. `backend` service に環境変数を設定する。
+6. GitHub repository から `frontend` service を作成する。
+7. `frontend` service の config file path に `/deployments/railway/frontend.railway.json` を設定する。
+8. `frontend` service に環境変数を設定する。
+9. Railway が発行した frontend URL を Discord Developer Portal の redirect URI に登録する。
+10. Discord Developer Portal の値を Railway の環境変数に反映し、再デプロイする。
+
+### Railway 環境変数
+
+`backend` service:
+
+| 変数 | 値 |
+| --- | --- |
+| `JWT_SECRET` | 本番用の十分に長いランダム値 |
+| `DISCORD_CLIENT_ID` | Discord Developer Portal の本番 app の client ID |
+| `DISCORD_CLIENT_SECRET` | Discord Developer Portal の本番 app の client secret |
+| `DISCORD_REDIRECT_URI` | `https://<frontend-domain>/auth/callback` |
+| `REDIS_URL` | Railway Redis service の private connection URL |
+| `SCHOOL_CLOSE_TIME` | `20:30` |
+
+`frontend` service:
+
+| 変数 | 値 |
+| --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://<backend-domain>` |
+| `NEXT_PUBLIC_DISCORD_CLIENT_ID` | Discord Developer Portal の本番 app の client ID |
+| `NEXT_PUBLIC_DISCORD_REDIRECT_URI` | `https://<frontend-domain>/auth/callback` |
+
+`API_ADDR` は通常設定しない。Railway が注入する `PORT` を Go API が読む。
 
 ## 代替候補
 
@@ -206,12 +261,13 @@ task compose:up
 
 | 変数 | 本番での扱い |
 | --- | --- |
-| `API_ADDR` | 基盤指定の port に合わせる。`PORT` が渡される環境では変換が必要 |
+| `API_ADDR` | 通常は設定しない。設定した場合は `PORT` より優先される |
 | `JWT_SECRET` | secret として設定する。開発値 `change-me` は使わない |
 | `DISCORD_CLIENT_ID` | Discord Developer Portal の本番 app の値 |
 | `DISCORD_CLIENT_SECRET` | secret として設定する |
 | `DISCORD_REDIRECT_URI` | 本番 frontend の `https://.../auth/callback` |
-| `REDIS_ADDR` | Redis の private endpoint または接続 URL |
+| `REDIS_URL` | Railway Redis の private connection URL。設定されている場合はこちらを優先する |
+| `REDIS_ADDR` | `REDIS_URL` を使わない環境の Redis host:port |
 | `REDIS_PASSWORD` | Redis 側で必要な場合だけ secret として設定 |
 | `REDIS_DB` | マネージド Redis で DB 番号が制限される場合は `0` |
 | `SCHOOL_CLOSE_TIME` | MVP 要件通り `20:30` |
@@ -228,20 +284,15 @@ task compose:up
 
 ### Dockerfile
 
-現状の `docker-compose.yml` は開発用で、`go run` と `npm run dev` を使っている。本番では次を追加する。
+現状の `docker-compose.yml` は開発用で、`go run` と `npm run dev` を使っている。本番では Railway 用 Dockerfile を使う。
 
-- Go API 用の multi-stage `Dockerfile`
-- Next.js 用の build / start 手順、または Vercel / Railway / Render の framework build 設定
-- `.dockerignore` の本番向け確認
+- Go API: `deployments/railway/backend.Dockerfile`
+- Next.js: `deployments/railway/frontend.Dockerfile`
+- Railway config: `deployments/railway/*.railway.json`
 
 ### Port 設定
 
-多くの PaaS は `PORT` 環境変数で listen port を渡す。現在の Go API は `API_ADDR` を読むため、次のどちらかに統一する。
-
-- デプロイ環境で `API_ADDR=:$PORT` 相当を設定できる場合は設定で吸収する。
-- アプリ側で `PORT` があれば `API_ADDR` より優先して `:<PORT>` を使う。
-
-後者のほうが PaaS 移植性は高い。
+Railway は `PORT` 環境変数で listen port を渡す。Go API は `API_ADDR` が未設定なら `PORT` を使う。frontend の Dockerfile は `next start` に `--port ${PORT:-3000}` を渡す。
 
 ### Healthcheck
 
@@ -293,17 +344,16 @@ Presence は TTL 付きの一時データであり、MVP ではバックアッ�
 - MVP のデプロイ先は Railway に決定する。
 - Railway project には `frontend`、`backend`、`redis` の 3 サービスを置く。
 - Redis は Railway project 内の private network で backend から接続する。
+- Railway 用の Dockerfile と Config as Code は `deployments/railway/` に置く。
+- `backend` は `PORT` と `REDIS_URL` に対応する。
 - AWS は現時点では採用しない。無料枠重視の代替案として Amplify + API Gateway + Lambda + DynamoDB TTL を記録する。
 - ローカル開発は既存の Docker Compose を継続する。
-- 本番投入前に Dockerfile と port 設定の方針を決める。
 - 本番と検証で Discord OAuth2 app、Redis、JWT secret を分ける。
 
 ## 未決事項
 
 - 本番ドメインを取得するか、ホスティング基盤の標準ドメインで開始するか。
 - Railway で `frontend` と `backend` を別サービスにするか、将来 1 コンテナ構成へ寄せるか。
-- Go API の `PORT` 対応を実装するタイミング。
-- 本番用 Dockerfile を `deployments/` に置くか、各アプリのルートに置くか。
 - Railway 本番と Railway staging を同一 project 内の環境で分けるか、別 project に分けるか。
 
 ## 参考

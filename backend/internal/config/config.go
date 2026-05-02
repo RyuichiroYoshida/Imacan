@@ -10,6 +10,7 @@ type Config struct {
 	APIAddr             string
 	JWTSecret           string
 	TokenTTL            time.Duration
+	RedisURL            string
 	RedisAddr           string
 	RedisPassword       string
 	RedisDB             int
@@ -28,9 +29,10 @@ func Load() Config {
 	closeHour, closeMinute := parseClock(env("SCHOOL_CLOSE_TIME", "20:30"))
 
 	return Config{
-		APIAddr:             env("API_ADDR", ":8080"),
+		APIAddr:             apiAddr(),
 		JWTSecret:           env("JWT_SECRET", "change-me"),
 		TokenTTL:            time.Hour,
+		RedisURL:            os.Getenv("REDIS_URL"),
 		RedisAddr:           env("REDIS_ADDR", "localhost:6379"),
 		RedisPassword:       os.Getenv("REDIS_PASSWORD"),
 		RedisDB:             envInt("REDIS_DB", 0),
@@ -44,6 +46,16 @@ func Load() Config {
 		DiscordTokenURL:     env("DISCORD_TOKEN_URL", "https://discord.com/api/oauth2/token"),
 		DiscordUserURL:      env("DISCORD_USER_URL", "https://discord.com/api/users/@me"),
 	}
+}
+
+func apiAddr() string {
+	if value := os.Getenv("API_ADDR"); value != "" {
+		return value
+	}
+	if port := os.Getenv("PORT"); port != "" {
+		return ":" + port
+	}
+	return ":8080"
 }
 
 func env(key, fallback string) string {

@@ -26,12 +26,21 @@ func main() {
 	}, nil)
 
 	redisClient := redistore.NewClient(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
+	redisDescription := cfg.RedisAddr
+	if cfg.RedisURL != "" {
+		var err error
+		redisClient, err = redistore.NewClientFromURL(cfg.RedisURL)
+		if err != nil {
+			log.Fatalf("parse redis url: %v", err)
+		}
+		redisDescription = "REDIS_URL"
+	}
 	defer redisClient.Close()
 
 	pingCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := redisClient.Ping(pingCtx).Err(); err != nil {
-		log.Fatalf("connect redis %s: %v", cfg.RedisAddr, err)
+		log.Fatalf("connect redis %s: %v", redisDescription, err)
 	}
 
 	presenceStore := redistore.NewPresenceStore(redisClient)

@@ -9,6 +9,9 @@
 
 ## Done
 
+- [x] [done] Railway 向けの backend / frontend Dockerfile と Config as Code を追加する - 2026-05-02
+- [x] [done] Go API を Railway の `PORT` と `REDIS_URL` に対応させる - 2026-05-02
+- [x] [done] Railway デプロイ手順と環境変数を `docs/infrastructure.md` に追記する - 2026-05-02
 - [x] [done] Docker Compose で Redis、Go API、Next.js フロントエンドを起動できる開発環境を追加する - 2026-05-02
 - [x] [done] Docker Compose 開発環境の起動、停止、ログ確認、healthcheck 手順を `docs/docker-compose.md` に文書化する - 2026-05-02
 - [x] [done] `Taskfile.yml` に `compose:up`、`compose:up:detached`、`compose:down`、`compose:logs` を追加する - 2026-05-02
@@ -25,3 +28,6 @@
 - この環境では `task --list` 実行時に Task CLI が未インストールだった。
 - `task dev` は Redis 起動後にバックエンドとフロントエンドを並列起動する想定。
 - `npm install` 実行時に moderate 脆弱性が 2 件報告されたが、破壊的更新は未実行。
+- Railway 用ファイルは `deployments/railway/backend.Dockerfile`、`deployments/railway/frontend.Dockerfile`、`deployments/railway/*.railway.json` に置いた。
+- Railway の service settings では config file path を `/deployments/railway/backend.railway.json` と `/deployments/railway/frontend.railway.json` にする。
+- Railway Redis は `REDIS_URL` を優先して接続する。ローカルと Docker Compose は従来通り `REDIS_ADDR` を使える。

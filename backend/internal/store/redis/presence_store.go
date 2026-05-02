@@ -29,6 +29,14 @@ func NewClient(addr, password string, db int) *goredis.Client {
 	})
 }
 
+func NewClientFromURL(redisURL string) (*goredis.Client, error) {
+	options, err := goredis.ParseURL(redisURL)
+	if err != nil {
+		return nil, err
+	}
+	return goredis.NewClient(options), nil
+}
+
 func (s *PresenceStore) Save(ctx context.Context, record presence.Record, ttl time.Duration) error {
 	if ttl <= 0 {
 		return s.Delete(ctx, record.UserID)

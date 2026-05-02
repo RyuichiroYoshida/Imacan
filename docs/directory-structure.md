@@ -21,7 +21,8 @@
 |   +-- components/            # Reusable UI components
 |   +-- lib/                   # API client and browser utilities
 |   +-- public/                # PWA assets
-+-- deployments/               # Deploy config such as Docker/Fly/Render
++-- deployments/               # Deploy config such as Docker/Railway
+|   +-- railway/               # Railway Dockerfiles and Config as Code
 +-- docs/                      # Project notes and design docs
 +-- .dockerignore              # Docker build context exclusions
 +-- docker-compose.yml         # Local Docker Compose development stack
