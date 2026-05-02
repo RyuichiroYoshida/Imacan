@@ -113,7 +113,7 @@ Railway の service settings で、それぞれの config file path を絶対パ
 | `DISCORD_CLIENT_ID` | Discord Developer Portal の本番 app の client ID |
 | `DISCORD_CLIENT_SECRET` | Discord Developer Portal の本番 app の client secret |
 | `DISCORD_REDIRECT_URI` | `https://<frontend-domain>/auth/callback` |
-| `REDIS_URL` | Railway Redis service の private connection URL |
+| `REDIS_URL` | Railway Redis service の private connection URL。例: `${{redis.REDIS_URL}}` |
 | `SCHOOL_CLOSE_TIME` | `20:30` |
 
 `frontend` service:
@@ -125,6 +125,12 @@ Railway の service settings で、それぞれの config file path を絶対パ
 | `NEXT_PUBLIC_DISCORD_REDIRECT_URI` | `https://<frontend-domain>/auth/callback` |
 
 `API_ADDR` は通常設定しない。Railway が注入する `PORT` を Go API が読む。
+
+Railway の Redis service 名が `redis` の場合、`backend` service の Variables では `REDIS_URL=${{redis.REDIS_URL}}` を設定する。Redis service 名が `Redis` など別名の場合は、`${{Redis.REDIS_URL}}` のように実際の service 名に合わせる。
+
+`REDIS_URL` を使わない場合は、Redis service が持つ `REDISHOST`、`REDISPORT`、`REDISUSER`、`REDISPASSWORD` を `backend` service に参照変数として設定してもよい。Go API は `REDIS_URL` が未設定で `REDISHOST` がある場合、これらの値から Redis connection URL を組み立てる。
+
+Railway の `backend` service にローカル用の `.env` をそのまま取り込まない。特に `REDIS_ADDR=localhost:6379` だけが設定され、`REDIS_URL` または `REDISHOST` が未設定の状態では、Railway 上のコンテナが自分自身の `localhost:6379` に接続しようとして Redis 接続に失敗する。
 
 ## 代替候補
 

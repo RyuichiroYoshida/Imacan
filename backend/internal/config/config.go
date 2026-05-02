@@ -1,6 +1,9 @@
 package config
 
 import (
+	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -32,7 +35,7 @@ func Load() Config {
 		APIAddr:             apiAddr(),
 		JWTSecret:           env("JWT_SECRET", "change-me"),
 		TokenTTL:            time.Hour,
-		RedisURL:            os.Getenv("REDIS_URL"),
+		RedisURL:            redisURL(),
 		RedisAddr:           env("REDIS_ADDR", "localhost:6379"),
 		RedisPassword:       os.Getenv("REDIS_PASSWORD"),
 		RedisDB:             envInt("REDIS_DB", 0),
@@ -46,6 +49,36 @@ func Load() Config {
 		DiscordTokenURL:     env("DISCORD_TOKEN_URL", "https://discord.com/api/oauth2/token"),
 		DiscordUserURL:      env("DISCORD_USER_URL", "https://discord.com/api/users/@me"),
 	}
+}
+
+func redisURL() string {
+	if value := os.Getenv("REDIS_URL"); value != "" {
+		return value
+	}
+
+	host := os.Getenv("REDISHOST")
+	if host == "" {
+		return ""
+	}
+
+	port := env("REDISPORT", "6379")
+	redisURL := url.URL{
+		Scheme: "redis",
+		Host:   net.JoinHostPort(host, port),
+		Path:   fmt.Sprintf("/%d", envInt("REDIS_DB", 0)),
+	}
+
+	user := os.Getenv("REDISUSER")
+	password := os.Getenv("REDISPASSWORD")
+	if user != "" && password != "" {
+		redisURL.User = url.UserPassword(user, password)
+	} else if user != "" {
+		redisURL.User = url.User(user)
+	} else if password != "" {
+		redisURL.User = url.UserPassword("", password)
+	}
+
+	return redisURL.String()
 }
 
 func apiAddr() string {
