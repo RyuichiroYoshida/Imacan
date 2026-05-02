@@ -254,7 +254,9 @@ Redis（TTL管理）
 
 ### 10.5 インフラ
 
-Fly.io / Render / Railway
+Railway
+
+Railway での MVP 本番構成と代替候補の記録は [docs/infrastructure.md](docs/infrastructure.md) を参照する。
 
 ### 10.6 認証設定
 
