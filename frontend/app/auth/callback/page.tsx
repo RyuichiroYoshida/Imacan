@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { exchangeDiscordCode } from "@/lib/api";
+import { ApiError, exchangeDiscordCode } from "@/lib/api";
 import { consumeOAuthState, getRedirectUri, saveToken } from "@/lib/auth";
 
 export default function AuthCallbackPage() {
@@ -44,11 +44,13 @@ function AuthCallbackContent() {
         saveToken(token.accessToken, token.expiresIn);
         router.replace("/");
       })
-      .catch(() => {
+      .catch((error) => {
         setFailed(true);
-        setMessage(
-          "Discordログインに失敗しました。時間をおいてもう一度試してください。",
-        );
+        if (error instanceof ApiError && error.code === "NETWORK_ERROR") {
+          setMessage("APIに接続できませんでした。APIが起動しているか確認してください。");
+          return;
+        }
+        setMessage("Discordログインに失敗しました。時間をおいてもう一度試してください。");
       });
   }, [router, searchParams]);
 

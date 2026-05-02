@@ -5,6 +5,7 @@ import {
   type Activity,
   type CurrentPresence,
   type PresenceSummary,
+  ApiError,
   fetchCurrentPresence,
   fetchSummary,
   formatActivity,
@@ -60,10 +61,15 @@ export function PresenceDashboard() {
     setToken(savedToken);
 
     refresh(savedToken)
-      .catch(() => {
+      .catch((error) => {
+        if (isUnauthorized(error)) {
+          clearToken();
+          setToken(null);
+          setCurrentPresence(null);
+        }
         setMessage({
           kind: "error",
-          text: "サーバーに接続できませんでした。APIが起動しているか確認してください。"
+          text: formatApiError(error, "初期表示に失敗しました。")
         });
       })
       .finally(() => setLoading(false));
@@ -116,8 +122,13 @@ export function PresenceDashboard() {
           text: `${formatActivity(result.activity)}に更新しました。有効期限は${formatDateTime(result.expiresAt)}です。`
         });
       }
-    } catch {
-      setMessage({ kind: "error", text: "状態を更新できませんでした。" });
+    } catch (error) {
+      if (isUnauthorized(error)) {
+        clearToken();
+        setToken(null);
+        setCurrentPresence(null);
+      }
+      setMessage({ kind: "error", text: formatApiError(error, "状態を更新できませんでした。") });
     } finally {
       setUpdating(null);
     }
@@ -224,6 +235,28 @@ export function PresenceDashboard() {
       </div>
     </main>
   );
+}
+
+function isUnauthorized(error: unknown) {
+  return error instanceof ApiError && error.status === 401;
+}
+
+function formatApiError(error: unknown, fallback: string) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) {
+      return "ログインの有効期限が切れました。もう一度Discordでログインしてください。";
+    }
+    if (error.code === "NETWORK_ERROR") {
+      return "APIに接続できませんでした。APIとRedisが起動しているか確認してください。";
+    }
+    if (error.status === 500) {
+      return "サーバーで処理できませんでした。APIまたはRedisの状態を確認してください。";
+    }
+    if (error.message) {
+      return error.message;
+    }
+  }
+  return fallback;
 }
 
 function Metric({ label, value }: { label: string; value: number }) {

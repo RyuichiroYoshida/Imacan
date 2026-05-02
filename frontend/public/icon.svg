@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Imacan icon">
+  <rect width="512" height="512" rx="96" fill="#126f83"/>
+  <path d="M128 336c37-48 79-72 128-72s91 24 128 72" fill="none" stroke="#ffffff" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="256" cy="184" r="62" fill="#ffffff"/>
+  <path d="M160 390h192" fill="none" stroke="#c9f7ee" stroke-width="34" stroke-linecap="round"/>
+  <path d="M128 112h256" fill="none" stroke="#c9f7ee" stroke-width="30" stroke-linecap="round"/>
+</svg>
