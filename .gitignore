@@ -29,10 +29,12 @@ go.work.sum
 
 # Node / TypeSpec
 node_modules/
+.next/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+frontend/dev-server*.log
 tsp-output/
 .gocache/
 .gotmp/
