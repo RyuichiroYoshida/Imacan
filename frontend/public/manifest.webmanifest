@@ -1,0 +1,9 @@
+{
+  "name": "Imacan",
+  "short_name": "Imacan",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#f8fafc",
+  "icons": []
+}
