@@ -1,0 +1,150 @@
+version: "3"
+
+dotenv:
+  - ".env"
+
+vars:
+  FRONTEND_DIR: frontend
+  TYPESPEC_DIR: backend/api/typespec
+  GENERATED_DIR: backend/internal/generated
+  GOCACHE_DIR: '{{.ROOT_DIR}}/.gocache'
+  API_ADDR: '{{default ":8080" .API_ADDR}}'
+  FRONTEND_HOST: 127.0.0.1
+  FRONTEND_PORT: '{{default "3000" .FRONTEND_PORT}}'
+  REDIS_CONTAINER: imacan-redis
+  REDIS_PORT: '{{default "6379" .REDIS_PORT}}'
+
+tasks:
+  default:
+    desc: 利用できるタスク一覧を表示する
+    cmds:
+      - task --list
+
+  deps:
+    desc: フロントエンドとTypeSpecの依存関係をインストールする
+    deps:
+      - deps:frontend
+      - deps:typespec
+
+  deps:frontend:
+    desc: Next.jsフロントエンドの依存関係をインストールする
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npm.cmd install
+
+  deps:typespec:
+    desc: TypeSpecの依存関係をインストールする
+    dir: "{{.TYPESPEC_DIR}}"
+    cmds:
+      - npm.cmd install
+
+  gen:
+    desc: TypeSpecからOpenAPIとGoサーバーコードを生成する
+    deps:
+      - gen:openapi
+      - gen:go
+
+  gen:openapi:
+    desc: TypeSpecからOpenAPI定義を生成する
+    dir: "{{.TYPESPEC_DIR}}"
+    cmds:
+      - npm.cmd run build
+
+  gen:go:
+    desc: oapi-codegenでGoの生成コードを更新する
+    env:
+      GOCACHE: "{{.GOCACHE_DIR}}"
+    cmds:
+      - go generate ./backend/internal/generated
+
+  fmt:
+    desc: TypeSpecとGoファイルを整形する
+    cmds:
+      - task: fmt:typespec
+      - task: fmt:go
+
+  fmt:typespec:
+    desc: TypeSpecファイルを整形する
+    dir: "{{.TYPESPEC_DIR}}"
+    cmds:
+      - npm.cmd run format
+
+  fmt:go:
+    desc: Goファイルを整形する
+    cmds:
+      - gofmt -w backend/cmd backend/internal
+
+  test:
+    desc: バックエンドのテストを実行する
+    env:
+      GOCACHE: "{{.GOCACHE_DIR}}"
+    cmds:
+      - go test ./...
+
+  build:
+    desc: バックエンドとフロントエンドをビルドする
+    cmds:
+      - task: build:backend
+      - task: build:frontend
+
+  build:backend:
+    desc: Go APIサーバーをビルドする
+    env:
+      GOCACHE: "{{.GOCACHE_DIR}}"
+    cmds:
+      - go build ./backend/cmd/api
+
+  build:frontend:
+    desc: Next.jsフロントエンドをビルドする
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npm.cmd run build
+
+  check:
+    desc: 生成、テスト、フロントエンドビルドをまとめて実行する
+    cmds:
+      - task: gen
+      - task: test
+      - task: build:frontend
+
+  dev:
+    desc: Redis、バックエンドAPI、フロントエンド開発サーバーを起動する
+    cmds:
+      - task: dev:redis
+      - task --parallel dev:backend dev:frontend
+
+  dev:backend:
+    desc: Go APIサーバーを起動する
+    env:
+      GOCACHE: "{{.GOCACHE_DIR}}"
+    cmds:
+      - go run ./backend/cmd/api
+
+  dev:frontend:
+    desc: Next.js開発サーバーを起動する
+    dir: "{{.FRONTEND_DIR}}"
+    cmds:
+      - npm.cmd run dev -- --hostname {{.FRONTEND_HOST}} --port {{.FRONTEND_PORT}}
+
+  dev:redis:
+    desc: Dockerでローカル開発用Redisを起動する
+    cmds:
+      - docker run --name {{.REDIS_CONTAINER}} -p {{.REDIS_PORT}}:6379 -d redis:7-alpine
+    status:
+      - docker ps --format "{{`{{.Names}}`}}" | findstr /x "{{.REDIS_CONTAINER}}"
+
+  stop:redis:
+    desc: ローカル開発用Redisコンテナを停止して削除する
+    cmds:
+      - powershell -NoProfile -Command "docker stop {{.REDIS_CONTAINER}}; docker rm {{.REDIS_CONTAINER}}"
+    ignore_error: true
+
+  logs:redis:
+    desc: Redisコンテナのログを表示する
+    cmds:
+      - docker logs -f {{.REDIS_CONTAINER}}
+
+  clean:
+    desc: ローカルの生成済みビルドキャッシュを削除する
+    cmds:
+      - powershell -NoProfile -Command "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue .gocache, frontend/.next"
