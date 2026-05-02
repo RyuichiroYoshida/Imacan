@@ -159,6 +159,37 @@ model PresenceSummaryResponse {
   @body body: PresenceSummaryResponseBody;
 }
 
+@doc("ログイン中ユーザーの現在有効なPresenceです。")
+@example(
+  #{
+    active: true,
+    activity: Activity.SELF_STUDY,
+    updatedAt: utcDateTime.fromISO("2026-04-26T09:30:00Z"),
+    expiresAt: utcDateTime.fromISO("2026-04-26T20:30:00Z"),
+  },
+  #{ title: "現在のPresenceがある" }
+)
+@example(#{ active: false }, #{ title: "現在のPresenceがない" })
+model CurrentPresenceResponseBody {
+  @doc("現在有効なPresenceが存在するかどうかです。")
+  active: boolean;
+
+  @doc("現在の活動ステータスです。Presenceがない場合は返却されません。")
+  activity?: Activity;
+
+  @doc("Presenceを更新した日時です。Presenceがない場合は返却されません。")
+  updatedAt?: utcDateTime;
+
+  @doc("Presenceが自動失効する日時です。Presenceがない場合は返却されません。")
+  expiresAt?: utcDateTime;
+}
+
+@doc("ログイン中ユーザーのPresence取得成功時のレスポンスです。")
+model CurrentPresenceResponse {
+  @statusCode statusCode: 200;
+  @body body: CurrentPresenceResponseBody;
+}
+
 @route("/auth")
 namespace Auth {
   @post
@@ -211,6 +242,28 @@ namespace Presence {
     | BadRequestResponse
     | UnauthorizedResponse
     | InternalServerErrorResponse;
+
+  @get
+  @route("/me")
+  @useAuth(BearerAuth)
+  @summary("ログイン中ユーザーのPresence取得")
+  @doc("ログイン中ユーザーの現在有効なPresenceを返します。Presenceがない、または期限切れの場合はactive=falseを返します。")
+  @opExample(
+    #{
+      returnType: #{
+        statusCode: 200,
+        body: #{
+          active: true,
+          activity: Activity.SELF_STUDY,
+          updatedAt: utcDateTime.fromISO("2026-04-26T09:30:00Z"),
+          expiresAt: utcDateTime.fromISO("2026-04-26T20:30:00Z"),
+        },
+      },
+    },
+    #{ title: "現在のPresenceを取得する" }
+  )
+  op getCurrentPresence(
+  ): CurrentPresenceResponse | UnauthorizedResponse | InternalServerErrorResponse;
 
   @get
   @route("/summary")

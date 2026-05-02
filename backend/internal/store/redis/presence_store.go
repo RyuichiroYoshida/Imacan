@@ -41,6 +41,22 @@ func (s *PresenceStore) Save(ctx context.Context, record presence.Record, ttl ti
 	return s.client.Set(ctx, presenceKey(record.UserID), payload, ttl).Err()
 }
 
+func (s *PresenceStore) Get(ctx context.Context, userID string) (presence.Record, bool, error) {
+	value, err := s.client.Get(ctx, presenceKey(userID)).Bytes()
+	if err == goredis.Nil {
+		return presence.Record{}, false, nil
+	}
+	if err != nil {
+		return presence.Record{}, false, err
+	}
+
+	var record presence.Record
+	if err := json.Unmarshal(value, &record); err != nil {
+		return presence.Record{}, false, fmt.Errorf("decode presence %q: %w", presenceKey(userID), err)
+	}
+	return record, true, nil
+}
+
 func (s *PresenceStore) Delete(ctx context.Context, userID string) error {
 	return s.client.Del(ctx, presenceKey(userID)).Err()
 }

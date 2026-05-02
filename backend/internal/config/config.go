@@ -20,6 +20,8 @@ type Config struct {
 	DiscordClientID     string
 	DiscordClientSecret string
 	DiscordRedirectURI  string
+	DiscordTokenURL     string
+	DiscordUserURL      string
 }
 
 func Load() Config {
@@ -39,6 +41,8 @@ func Load() Config {
 		DiscordClientID:     os.Getenv("DISCORD_CLIENT_ID"),
 		DiscordClientSecret: os.Getenv("DISCORD_CLIENT_SECRET"),
 		DiscordRedirectURI:  os.Getenv("DISCORD_REDIRECT_URI"),
+		DiscordTokenURL:     env("DISCORD_TOKEN_URL", "https://discord.com/api/oauth2/token"),
+		DiscordUserURL:      env("DISCORD_USER_URL", "https://discord.com/api/users/@me"),
 	}
 }
 

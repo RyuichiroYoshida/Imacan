@@ -94,6 +94,22 @@ func (s *Service) Summary(ctx context.Context, now time.Time) (Summary, error) {
 	return summary, nil
 }
 
+func (s *Service) Current(ctx context.Context, userID string, now time.Time) (Record, bool, error) {
+	record, ok, err := s.store.Get(ctx, userID)
+	if err != nil || !ok {
+		return Record{}, false, err
+	}
+
+	if !record.ExpiresAt.After(now) {
+		if err := s.store.Delete(ctx, userID); err != nil {
+			return Record{}, false, err
+		}
+		return Record{}, false, nil
+	}
+
+	return record, true, nil
+}
+
 func (s *Service) expiresAt(activity generated.Activity, now time.Time) time.Time {
 	closeAt := time.Date(
 		now.Year(),

@@ -17,6 +17,14 @@ func main() {
 	cfg := config.Load()
 
 	authService := auth.NewService(cfg.JWTSecret, cfg.TokenTTL)
+	authService.ConfigureDiscord(auth.DiscordConfig{
+		ClientID:     cfg.DiscordClientID,
+		ClientSecret: cfg.DiscordClientSecret,
+		RedirectURI:  cfg.DiscordRedirectURI,
+		TokenURL:     cfg.DiscordTokenURL,
+		UserURL:      cfg.DiscordUserURL,
+	}, nil)
+
 	redisClient := redistore.NewClient(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
 	defer redisClient.Close()
 

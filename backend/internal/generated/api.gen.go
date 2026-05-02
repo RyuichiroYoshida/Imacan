@@ -75,6 +75,14 @@ type AuthTokenResponseBody struct {
 // AuthTokenResponseBodyTokenType defines model for AuthTokenResponseBody.TokenType.
 type AuthTokenResponseBodyTokenType string
 
+// CurrentPresenceResponseBody defines model for CurrentPresenceResponseBody.
+type CurrentPresenceResponseBody struct {
+	Active    bool       `json:"active"`
+	Activity  *Activity  `json:"activity,omitempty"`
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+}
+
 // DiscordCallbackRequest defines model for DiscordCallbackRequest.
 type DiscordCallbackRequest struct {
 	Code        string  `json:"code"`
@@ -123,6 +131,9 @@ type ServerInterface interface {
 	// (POST /presence)
 	PresenceUpdatePresence(w http.ResponseWriter, r *http.Request)
 
+	// (GET /presence/me)
+	PresenceGetCurrentPresence(w http.ResponseWriter, r *http.Request)
+
 	// (GET /presence/summary)
 	PresenceGetPresenceSummary(w http.ResponseWriter, r *http.Request)
 }
@@ -161,6 +172,26 @@ func (siw *ServerInterfaceWrapper) PresenceUpdatePresence(w http.ResponseWriter,
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PresenceUpdatePresence(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PresenceGetCurrentPresence operation middleware
+func (siw *ServerInterfaceWrapper) PresenceGetCurrentPresence(w http.ResponseWriter, r *http.Request) {
+
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, BearerAuthScopes, []string{})
+
+	r = r.WithContext(ctx)
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PresenceGetCurrentPresence(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -306,6 +337,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc("POST "+options.BaseURL+"/auth/discord/callback", wrapper.AuthDiscordCallback)
 	m.HandleFunc("POST "+options.BaseURL+"/presence", wrapper.PresenceUpdatePresence)
+	m.HandleFunc("GET "+options.BaseURL+"/presence/me", wrapper.PresenceGetCurrentPresence)
 	m.HandleFunc("GET "+options.BaseURL+"/presence/summary", wrapper.PresenceGetPresenceSummary)
 
 	return m
@@ -390,6 +422,40 @@ func (response PresenceUpdatePresence500JSONResponse) VisitPresenceUpdatePresenc
 	return json.NewEncoder(w).Encode(response)
 }
 
+type PresenceGetCurrentPresenceRequestObject struct {
+}
+
+type PresenceGetCurrentPresenceResponseObject interface {
+	VisitPresenceGetCurrentPresenceResponse(w http.ResponseWriter) error
+}
+
+type PresenceGetCurrentPresence200JSONResponse CurrentPresenceResponseBody
+
+func (response PresenceGetCurrentPresence200JSONResponse) VisitPresenceGetCurrentPresenceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PresenceGetCurrentPresence401JSONResponse ErrorResponseBody
+
+func (response PresenceGetCurrentPresence401JSONResponse) VisitPresenceGetCurrentPresenceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PresenceGetCurrentPresence500JSONResponse ErrorResponseBody
+
+func (response PresenceGetCurrentPresence500JSONResponse) VisitPresenceGetCurrentPresenceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type PresenceGetPresenceSummaryRequestObject struct {
 }
 
@@ -423,6 +489,9 @@ type StrictServerInterface interface {
 
 	// (POST /presence)
 	PresenceUpdatePresence(ctx context.Context, request PresenceUpdatePresenceRequestObject) (PresenceUpdatePresenceResponseObject, error)
+
+	// (GET /presence/me)
+	PresenceGetCurrentPresence(ctx context.Context, request PresenceGetCurrentPresenceRequestObject) (PresenceGetCurrentPresenceResponseObject, error)
 
 	// (GET /presence/summary)
 	PresenceGetPresenceSummary(ctx context.Context, request PresenceGetPresenceSummaryRequestObject) (PresenceGetPresenceSummaryResponseObject, error)
@@ -519,6 +588,30 @@ func (sh *strictHandler) PresenceUpdatePresence(w http.ResponseWriter, r *http.R
 	}
 }
 
+// PresenceGetCurrentPresence operation middleware
+func (sh *strictHandler) PresenceGetCurrentPresence(w http.ResponseWriter, r *http.Request) {
+	var request PresenceGetCurrentPresenceRequestObject
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PresenceGetCurrentPresence(ctx, request.(PresenceGetCurrentPresenceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PresenceGetCurrentPresence")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PresenceGetCurrentPresenceResponseObject); ok {
+		if err := validResponse.VisitPresenceGetCurrentPresenceResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // PresenceGetPresenceSummary operation middleware
 func (sh *strictHandler) PresenceGetPresenceSummary(w http.ResponseWriter, r *http.Request) {
 	var request PresenceGetPresenceSummaryRequestObject
@@ -546,25 +639,26 @@ func (sh *strictHandler) PresenceGetPresenceSummary(w http.ResponseWriter, r *ht
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

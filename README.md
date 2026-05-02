@@ -209,6 +209,21 @@ GET /presence/summary
 }
 ```
 
+### 8.4 自分の状態取得
+
+```json
+GET /presence/me
+Authorization: Bearer <JWT>
+{
+  "active": true,
+  "activity": "SELF_STUDY",
+  "updatedAt": "2026-04-26T09:30:00Z",
+  "expiresAt": "2026-04-26T20:30:00Z"
+}
+```
+
+状態がない、または期限切れの場合は `active: false` を返す。
+
 ## 9. データモデル
 
 ``` go

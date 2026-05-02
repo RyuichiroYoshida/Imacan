@@ -8,6 +8,7 @@ import (
 
 type Store interface {
 	Save(ctx context.Context, record Record, ttl time.Duration) error
+	Get(ctx context.Context, userID string) (Record, bool, error)
 	Delete(ctx context.Context, userID string) error
 	List(ctx context.Context) ([]Record, error)
 }
@@ -29,6 +30,14 @@ func (s *MemoryStore) Save(ctx context.Context, record Record, ttl time.Duration
 
 	s.records[record.UserID] = record
 	return nil
+}
+
+func (s *MemoryStore) Get(ctx context.Context, userID string) (Record, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	record, ok := s.records[userID]
+	return record, ok, nil
 }
 
 func (s *MemoryStore) Delete(ctx context.Context, userID string) error {

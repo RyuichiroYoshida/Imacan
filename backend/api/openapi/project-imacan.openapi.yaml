@@ -101,6 +101,41 @@ paths:
                   lng: 139.76
       security:
         - BearerAuth: []
+  /presence/me:
+    get:
+      operationId: Presence_getCurrentPresence
+      summary: ログイン中ユーザーのPresence取得
+      description: ログイン中ユーザーの現在有効なPresenceを返します。Presenceがない、または期限切れの場合はactive=falseを返します。
+      parameters: []
+      responses:
+        '200':
+          description: ログイン中ユーザーのPresence取得成功時のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentPresenceResponseBody'
+              examples:
+                現在のPresenceを取得する:
+                  summary: 現在のPresenceを取得する
+                  value:
+                    active: true
+                    activity: SELF_STUDY
+                    updatedAt: '2026-04-26T09:30:00Z'
+                    expiresAt: '2026-04-26T20:30:00Z'
+        '401':
+          description: JWTが未指定、または無効な場合のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+        '500':
+          description: サーバー内部で想定外のエラーが発生した場合のレスポンスです。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponseBody'
+      security:
+        - BearerAuth: []
   /presence/summary:
     get:
       operationId: Presence_getPresenceSummary
@@ -160,6 +195,29 @@ components:
         accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example
         tokenType: Bearer
         expiresIn: 3600
+    CurrentPresenceResponseBody:
+      type: object
+      required:
+        - active
+      properties:
+        active:
+          type: boolean
+          description: 現在有効なPresenceが存在するかどうかです。
+        activity:
+          allOf:
+            - $ref: '#/components/schemas/Activity'
+          description: 現在の活動ステータスです。Presenceがない場合は返却されません。
+        updatedAt:
+          type: string
+          format: date-time
+          description: Presenceを更新した日時です。Presenceがない場合は返却されません。
+        expiresAt:
+          type: string
+          format: date-time
+          description: Presenceが自動失効する日時です。Presenceがない場合は返却されません。
+      description: ログイン中ユーザーの現在有効なPresenceです。
+      example:
+        active: false
     DiscordCallbackRequest:
       type: object
       required:

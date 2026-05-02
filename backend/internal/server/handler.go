@@ -28,7 +28,11 @@ func (h *Handler) AuthDiscordCallback(ctx context.Context, request generated.Aut
 		return generated.AuthDiscordCallback400JSONResponse(errorBody("INVALID_REQUEST", "code is required")), nil
 	}
 
-	userID := auth.UserIDFromDiscordCode(request.Body.Code)
+	userID, err := h.auth.AuthenticateDiscord(ctx, request.Body.Code, request.Body.RedirectUri)
+	if err != nil {
+		return generated.AuthDiscordCallback400JSONResponse(errorBody("DISCORD_AUTH_FAILED", "failed to authenticate with Discord")), nil
+	}
+
 	token, expiresIn, err := h.auth.Issue(userID, h.now())
 	if err != nil {
 		return generated.AuthDiscordCallback500JSONResponse(errorBody("TOKEN_ISSUE_FAILED", "failed to issue token")), nil
@@ -64,6 +68,30 @@ func (h *Handler) PresenceUpdatePresence(ctx context.Context, request generated.
 	}
 
 	return response, nil
+}
+
+func (h *Handler) PresenceGetCurrentPresence(ctx context.Context, request generated.PresenceGetCurrentPresenceRequestObject) (generated.PresenceGetCurrentPresenceResponseObject, error) {
+	userID, ok := userIDFromContext(ctx)
+	if !ok {
+		return generated.PresenceGetCurrentPresence401JSONResponse(errorBody("UNAUTHORIZED", "valid bearer token is required")), nil
+	}
+
+	record, active, err := h.presence.Current(ctx, userID, h.now())
+	if err != nil {
+		return generated.PresenceGetCurrentPresence500JSONResponse(errorBody("CURRENT_PRESENCE_FAILED", "failed to load current presence")), nil
+	}
+	if !active {
+		return generated.PresenceGetCurrentPresence200JSONResponse{
+			Active: false,
+		}, nil
+	}
+
+	return generated.PresenceGetCurrentPresence200JSONResponse{
+		Active:    true,
+		Activity:  &record.Activity,
+		UpdatedAt: &record.UpdatedAt,
+		ExpiresAt: &record.ExpiresAt,
+	}, nil
 }
 
 func (h *Handler) PresenceGetPresenceSummary(ctx context.Context, request generated.PresenceGetPresenceSummaryRequestObject) (generated.PresenceGetPresenceSummaryResponseObject, error) {
