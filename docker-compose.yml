@@ -1,0 +1,68 @@
+name: imacan
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: imacan-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    image: golang:1.26-alpine
+    container_name: imacan-backend
+    working_dir: /app
+    command: sh -c "go mod download && go run ./backend/cmd/api"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      API_ADDR: ":8080"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ""
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  frontend:
+    image: node:24-alpine
+    container_name: imacan-frontend
+    working_dir: /app/frontend
+    command: sh -c "npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: "http://localhost:${API_PORT:-8080}"
+      NEXT_PUBLIC_DISCORD_CLIENT_ID: "${NEXT_PUBLIC_DISCORD_CLIENT_ID:-}"
+      NEXT_PUBLIC_DISCORD_REDIRECT_URI: "http://localhost:${FRONTEND_PORT:-3000}/auth/callback"
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app/frontend
+      - frontend-node-modules:/app/frontend/node_modules
+      - frontend-next-cache:/app/frontend/.next
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  redis-data:
+  go-mod-cache:
+  go-build-cache:
+  frontend-node-modules:
+  frontend-next-cache:

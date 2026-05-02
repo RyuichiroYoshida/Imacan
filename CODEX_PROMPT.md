@@ -39,6 +39,7 @@ READMEの内容を正として、MVPを実装してください。
 - 認証: Discord OAuth2 + JWT
 - データストア: Redis
 - 配信形態: PWA
+- コンテナ管理: docker-compose
 
 ## バックエンド要件
 

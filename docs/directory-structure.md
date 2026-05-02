@@ -23,6 +23,8 @@
 |   +-- public/                # PWA assets
 +-- deployments/               # Deploy config such as Docker/Fly/Render
 +-- docs/                      # Project notes and design docs
++-- .dockerignore              # Docker build context exclusions
++-- docker-compose.yml         # Local Docker Compose development stack
 +-- CODEX_PROMPT.md            # Implementation prompt for Codex
 +-- README.md                  # MVP requirements
 +-- go.mod                     # Go module definition
