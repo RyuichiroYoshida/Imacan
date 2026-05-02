@@ -258,6 +258,10 @@ Redis（TTL管理）
 
 Fly.io / Render / Railway
 
+### 10.6 認証設定
+
+Discord OAuth2 と `JWT_SECRET` の設定・確認手順は [docs/auth-operations.md](docs/auth-operations.md) を参照する。
+
 ## 11. アーキテクチャ
 
 ``` plane_text

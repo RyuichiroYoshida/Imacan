@@ -7,7 +7,9 @@ import { consumeOAuthState, getRedirectUri, saveToken } from "@/lib/auth";
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense fallback={<CallbackShell message="Discordログインを確認しています。" />}>
+    <Suspense
+      fallback={<CallbackShell message="Discordログインを確認しています。" />}
+    >
       <AuthCallbackContent />
     </Suspense>
   );
@@ -31,7 +33,9 @@ function AuthCallbackContent() {
     }
     if (!state || !expectedState || state !== expectedState) {
       setFailed(true);
-      setMessage("ログイン状態を確認できませんでした。もう一度ログインしてください。");
+      setMessage(
+        "ログイン状態を確認できませんでした。もう一度ログインしてください。",
+      );
       return;
     }
 
@@ -42,17 +46,25 @@ function AuthCallbackContent() {
       })
       .catch(() => {
         setFailed(true);
-        setMessage("Discordログインに失敗しました。時間をおいてもう一度試してください。");
+        setMessage(
+          "Discordログインに失敗しました。時間をおいてもう一度試してください。",
+        );
       });
   }, [router, searchParams]);
 
   return (
     <main className="callback-shell">
       <section className="callback-panel" aria-live="polite">
-        <h1 className="section-title">{failed ? "ログインできませんでした" : "ログイン中"}</h1>
+        <h1 className="section-title">
+          {failed ? "ログインできませんでした" : "ログイン中"}
+        </h1>
         <p className={failed ? "message error" : "message"}>{message}</p>
         {failed ? (
-          <button className="secondary-button" type="button" onClick={() => router.replace("/")}>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => router.replace("/")}
+          >
             ホームに戻る
           </button>
         ) : null}
