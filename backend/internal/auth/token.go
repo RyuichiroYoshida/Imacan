@@ -20,6 +20,7 @@ var (
 	ErrExpiredToken           = errors.New("expired token")
 	ErrDiscordNotConfigured   = errors.New("discord oauth is not configured")
 	ErrDiscordAuthentication  = errors.New("discord authentication failed")
+	ErrDiscordUnavailable     = errors.New("discord oauth service unavailable")
 	ErrDiscordUserUnavailable = errors.New("discord user unavailable")
 )
 
@@ -173,12 +174,15 @@ func (s *Service) exchangeDiscordCode(ctx context.Context, code string, redirect
 
 	response, err := s.httpClient.Do(request)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrDiscordAuthentication, err)
+		return "", fmt.Errorf("%w: %v", ErrDiscordUnavailable, err)
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+	if response.StatusCode == http.StatusBadRequest || response.StatusCode == http.StatusUnauthorized {
 		return "", fmt.Errorf("%w: token endpoint returned %d", ErrDiscordAuthentication, response.StatusCode)
+	}
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("%w: token endpoint returned %d", ErrDiscordUnavailable, response.StatusCode)
 	}
 
 	var body struct {

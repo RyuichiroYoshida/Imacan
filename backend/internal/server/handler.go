@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/RyuichiroYoshida/imacan/backend/internal/auth"
@@ -30,7 +31,7 @@ func (h *Handler) AuthDiscordCallback(ctx context.Context, request generated.Aut
 
 	userID, err := h.auth.AuthenticateDiscord(ctx, request.Body.Code, request.Body.RedirectUri)
 	if err != nil {
-		return generated.AuthDiscordCallback400JSONResponse(errorBody("DISCORD_AUTH_FAILED", "failed to authenticate with Discord")), nil
+		return authDiscordErrorResponse(err), nil
 	}
 
 	token, expiresIn, err := h.auth.Issue(userID, h.now())
@@ -111,5 +112,30 @@ func errorBody(code, message string) generated.ErrorResponseBody {
 	return generated.ErrorResponseBody{
 		Code:    code,
 		Message: message,
+	}
+}
+
+func authDiscordErrorResponse(err error) generated.AuthDiscordCallbackResponseObject {
+	switch {
+	case errors.Is(err, auth.ErrDiscordNotConfigured):
+		return generated.AuthDiscordCallback500JSONResponse(errorBody(
+			"DISCORD_OAUTH_NOT_CONFIGURED",
+			"Discord OAuth2 environment variables are not configured",
+		))
+	case errors.Is(err, auth.ErrDiscordAuthentication):
+		return generated.AuthDiscordCallback400JSONResponse(errorBody(
+			"DISCORD_AUTH_FAILED",
+			"Discord authorization code is invalid or expired",
+		))
+	case errors.Is(err, auth.ErrDiscordUnavailable), errors.Is(err, auth.ErrDiscordUserUnavailable):
+		return generated.AuthDiscordCallback500JSONResponse(errorBody(
+			"DISCORD_API_UNAVAILABLE",
+			"Discord API is unavailable",
+		))
+	default:
+		return generated.AuthDiscordCallback500JSONResponse(errorBody(
+			"DISCORD_AUTH_ERROR",
+			"failed to authenticate with Discord",
+		))
 	}
 }

@@ -138,10 +138,60 @@ func TestCurrentPresenceRequiresBearerToken(t *testing.T) {
 	}
 }
 
+func TestAuthDiscordCallbackReportsMissingConfig(t *testing.T) {
+	authService := auth.NewService("test-secret", time.Hour)
+	presenceService := presence.NewService(presence.NewMemoryStore(), 105*time.Minute, 20, 30)
+	handler := NewHandler(authService, presenceService)
+	router := NewRouter(handler, authService)
+
+	response := postAuthCallback(t, router, "test-code")
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d: %s", response.Code, response.Body.String())
+	}
+	assertErrorCode(t, response, "DISCORD_OAUTH_NOT_CONFIGURED")
+}
+
+func TestAuthDiscordCallbackReportsInvalidCode(t *testing.T) {
+	router, _ := newTestRouterWithDiscordHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/oauth2/token":
+			http.Error(w, "invalid_grant", http.StatusBadRequest)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+
+	response := postAuthCallback(t, router, "bad-code")
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", response.Code, response.Body.String())
+	}
+	assertErrorCode(t, response, "DISCORD_AUTH_FAILED")
+}
+
+func TestAuthDiscordCallbackReportsDiscordUnavailable(t *testing.T) {
+	router, _ := newTestRouterWithDiscordHandler(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/oauth2/token":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"access_token":"discord-access-token"}`))
+		case "/users/@me":
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+
+	response := postAuthCallback(t, router, "test-code")
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("expected status 500, got %d: %s", response.Code, response.Body.String())
+	}
+	assertErrorCode(t, response, "DISCORD_API_UNAVAILABLE")
+}
+
 func newTestRouter(t *testing.T) (http.Handler, *Handler) {
 	t.Helper()
 
-	discord := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return newTestRouterWithDiscordHandler(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/oauth2/token":
 			if err := r.ParseForm(); err != nil {
@@ -161,7 +211,13 @@ func newTestRouter(t *testing.T) (http.Handler, *Handler) {
 		default:
 			http.NotFound(w, r)
 		}
-	}))
+	})
+}
+
+func newTestRouterWithDiscordHandler(t *testing.T, discordHandler http.HandlerFunc) (http.Handler, *Handler) {
+	t.Helper()
+
+	discord := httptest.NewServer(discordHandler)
 	t.Cleanup(discord.Close)
 
 	authService := auth.NewService("test-secret", time.Hour)
@@ -181,10 +237,7 @@ func newTestRouter(t *testing.T) (http.Handler, *Handler) {
 func requestToken(t *testing.T, router http.Handler) string {
 	t.Helper()
 
-	request := httptest.NewRequest(http.MethodPost, "/auth/discord/callback", bytes.NewReader([]byte(`{"code":"test-code"}`)))
-	request.Header.Set("Content-Type", "application/json")
-	response := httptest.NewRecorder()
-	router.ServeHTTP(response, request)
+	response := postAuthCallback(t, router, "test-code")
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("expected auth status 200, got %d: %s", response.Code, response.Body.String())
@@ -199,4 +252,30 @@ func requestToken(t *testing.T, router http.Handler) string {
 	}
 
 	return body.AccessToken
+}
+
+func postAuthCallback(t *testing.T, router http.Handler, code string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	requestBody, err := json.Marshal(map[string]string{"code": code})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/auth/discord/callback", bytes.NewReader(requestBody))
+	request.Header.Set("Content-Type", "application/json")
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, request)
+	return response
+}
+
+func assertErrorCode(t *testing.T, response *httptest.ResponseRecorder, want string) {
+	t.Helper()
+
+	var body generated.ErrorResponseBody
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Code != want {
+		t.Fatalf("expected error code %q, got %+v", want, body)
+	}
 }
