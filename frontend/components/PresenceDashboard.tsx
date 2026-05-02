@@ -133,7 +133,7 @@ export function PresenceDashboard() {
             </div>
             <div>
               <h1 className="brand-title">Imacan</h1>
-              <p className="brand-copy">今、学校に誰かいるかを軽く共有する場所です。</p>
+              <p className="brand-copy">今、学校に誰かいるかを手動で軽く共有する場所です。</p>
             </div>
           </div>
 
@@ -190,7 +190,7 @@ export function PresenceDashboard() {
 
           <section className="action-panel" aria-label="状態更新">
             <h2 className="section-title">状態を更新</h2>
-            <p className="muted">1タップで現在の状態を共有します。</p>
+            <p className="muted">1タップで現在の状態を共有します。MVPでは位置情報を使いません。</p>
             <div className="status-actions">
               <button
                 className="status-button"
